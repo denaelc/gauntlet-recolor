@@ -263,10 +263,10 @@ public class RecolorCG extends Plugin
 	{
 		if(event.getGameState() == GameState.LOGGED_IN)
 		{
-			resetSceneIDs();
 			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
 			if(regionId == REGION_ID_GAUNTLET_LOBBY)
 			{
+				resetSceneIDs();
 				recordedGameObjects.clear();
 				recordedGroundObjects.clear();
 				recordedNPCs.clear();
@@ -530,8 +530,6 @@ public class RecolorCG extends Plugin
 			}
 			dataProcessor.applyColors(npc.getId(), "NPC", model, true);
 		}
-
-
 	}
 
 	public void recolorProjectile(Projectile projectile)
@@ -546,7 +544,6 @@ public class RecolorCG extends Plugin
 			}
 			dataProcessor.applyColors(projectile.getId(), "Projectile", model, true);
 		}
-
 	}
 
 	public void resetGameObject(GameObject gameObject)
@@ -635,6 +632,7 @@ public class RecolorCG extends Plugin
 
 	private void resetSceneIDs()
 	{
+		log.info(sceneIDs.size() + " SIZEEE");
 		int size = sceneIDs.size();
 		for (int i = 0; i < size; i++)
 		{
@@ -642,6 +640,7 @@ public class RecolorCG extends Plugin
 		}
 		recordedModels.clear();
 		sceneIDs.clear();
+		log.info(sceneIDs.size() + " SIZEEE");
 	}
 
 }
