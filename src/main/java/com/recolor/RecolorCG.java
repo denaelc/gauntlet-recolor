@@ -25,7 +25,6 @@
 package com.recolor;
 
 import javax.inject.Inject;
-
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -37,7 +36,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-
 import java.awt.*;
 import java.util.*;
 import java.util.List;
@@ -52,13 +50,12 @@ public class RecolorCG extends Plugin
 
 	private static final List<Integer> OBJECT_IDS = Arrays.asList(35977, 35966, 35965, 35980, 37337, 35969, 35967, 35973, 35994, 35992, 36001, 36000, 35999, 35998, 35997, 35971, 35968, 35972, 35970, 35994, 35995, 35996, 36002, 35974, 35975, 35976, 35968, 35972, 36003, 36004, 36005, 36006, 36007, 36008);
 	private static final List<Integer> GROUND_IDS = Arrays.asList(36046, 36052, 36053, 36054, 36055, 36056, 36057, 36058, 36059, 36048, 36047);
-	private static final List<Integer> NPC_IDS = Arrays.asList(9035, 9041, 9040, 9044, 9043, 9045, 9048, 9042, 9046, 9047, 9037, 9036, 9039);
+	private static final List<Integer> NPC_IDS = Arrays.asList(9041, 9040, 9044, 9043, 9045, 9048, 9042, 9046, 9047, 9039);
 	private static final List<Integer> PROJECTILE_IDS = Arrays.asList(1712, 1708, 1702, 1714, 1723);
 
 	public static final int REGION_ID_GAUNTLET_LOBBY = 12127;
 	public static final int REGION_ID_GAUNTLET_CORRUPTED = 7768;
 	//public static final int REGION_ID_GAUNTLET_NORMAL = 7512;
-
 
 	//Will likely use the ITEM_IDS in a future update of this plugin
 	//private static final List<Integer> ITEM_IDS = Arrays.asList(23824, 23834, 23821, 23822, 23823, 23820, 23835, 23837, 23838, 23585, 23582, 23583, 23584, 23849, 23850, 23851, 23855, 23856, 23857);
@@ -76,6 +73,7 @@ public class RecolorCG extends Plugin
 	int regionId;
 	Color randomColor1;
 	Color randomColor2;
+
 
 	@Inject
 	private ClientThread clientThread;
@@ -101,13 +99,36 @@ public class RecolorCG extends Plugin
 		randomColor2 = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
 
 		// Vanilla model facecolors are stored in a .txt -> the new model colors can be calculated before the models even appear making the spawnEvents less expensive
-		if(config.secondcolor_active())
+		if(config.secondcolor_active() && config.random())
 		{
-			dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.secondcolor());
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor2);
+		}
+		else if (config.secondcolor_active() && !config.random())
+		{
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.secondcolor());
+		}
+		else if (!config.secondcolor_active() && config.random())
+		{
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor1);
 		}
 		else
 		{
-			dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.color());
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.color());
+		}
+
+		// If the user is already logged in AND inside the gauntlet, Hun still needs to be recolored
+		// Hun gets recolored on GamestateChanges
+		//TODO: When the random function is on, it should recolor randomly on startup
+		if(client.getGameState() == GameState.LOGGED_IN)
+		{
+			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+			if(regionId == REGION_ID_GAUNTLET_CORRUPTED)
+			{
+				clientThread.invoke(()->
+				{
+					client.setGameState(GameState.LOADING);
+				});
+			}
 		}
 
 	}
@@ -119,6 +140,8 @@ public class RecolorCG extends Plugin
 		{
 			clearAll();
 
+			resetSceneIDs();
+
 			//freeing the stored data.
 			recordedGameObjects.clear();
 			recordedGroundObjects.clear();
@@ -128,14 +151,16 @@ public class RecolorCG extends Plugin
 			recordedProjectiles.clear();
 			recordedModels.clear();
 			sceneIDs.clear();
-			dataProcessor.cleanUp();
-
-			dataProcessor = null;
+			synchronized (dataProcessor)
+			{
+				dataProcessor.cleanUp();
+				dataProcessor = null;
+			}
 			rand = null;
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Some game models may still be affected by the plugin. Please re-log to ensure that everything is properly reset.", null);
+			client.setGameState(GameState.LOADING);
 		});
-
 	}
 
 	@Subscribe
@@ -152,22 +177,34 @@ public class RecolorCG extends Plugin
 			{
 				if (config.secondcolor_active())
 				{
-					dataProcessor.recolorData(config.color(), config.secondcolor());
+					synchronized (dataProcessor)
+					{
+						dataProcessor.recolorData(config.color(), config.secondcolor());
+					}
 				}
 				else
 				{
-					dataProcessor.recolorData(config.color(), config.color());
+					synchronized (dataProcessor)
+					{
+						dataProcessor.recolorData(config.color(), config.color());
+					}
 				}
 			}
 			else
 			{
 				if(config.secondcolor_active())
 				{
-					dataProcessor.recolorData(randomColor1, randomColor2);
+					synchronized (dataProcessor)
+					{
+						dataProcessor.recolorData(randomColor1, randomColor2);
+					}
 				}
 				else
 				{
-					dataProcessor.recolorData(randomColor1, randomColor1);
+					synchronized (dataProcessor)
+					{
+						dataProcessor.recolorData(randomColor1, randomColor1);
+					}
 				}
 			}
 			clientThread.invoke(() ->
@@ -184,9 +221,15 @@ public class RecolorCG extends Plugin
 	{
 		if (OBJECT_IDS.contains(event.getGameObject().getId()))
 		{
+			log.info("ITS THIS!");
 			recordedGameObjects.add(event.getGameObject());
 			resetGameObject(event.getGameObject());
 			recolorGameObject(event.getGameObject());
+
+			if(event.getGameObject().getId() == 35992)	//hunlleff room spawns 35992 when entered. This can be used to recolor the gate again (otherwise it will be red again)
+			{
+				recolorGate();
+			}
 		}
 	}
 
@@ -213,17 +256,6 @@ public class RecolorCG extends Plugin
 	}
 
 	@Subscribe
-	public void onNpcChanged(NpcChanged event)
-	{
-		if (NPC_IDS.contains(event.getNpc().getId()))
-		{
-			recordedNPCs.add(event.getNpc());
-			resetNPC(event.getNpc());
-			recolorNPC(event.getNpc());
-		}
-	}
-
-	@Subscribe
 	public void onProjectileMoved(ProjectileMoved event)
 	{
 		if(PROJECTILE_IDS.contains(event.getProjectile().getId()))
@@ -239,21 +271,19 @@ public class RecolorCG extends Plugin
 	{
 		if (NPC_IDS.contains(event.getNpc().getId()))
 		{
-			resetNPC(event.getNpc());
-		}
-	}
-
-	@Subscribe
-	public void onClientTick(ClientTick event) throws Exception
-	{
-		// Gate changes its model when you pass through it. The new model needs to be recolored immediately or else it will be vanilla red.
-		// If you find a less expensive alternative, contact me.
-		if(client.getGameState() == GameState.LOGGED_IN)
-		{
-			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-			if (regionId == REGION_ID_GAUNTLET_CORRUPTED)
+			int npcID = event.getNpc().getId();
+			Boolean resetnpc = false;
+			List<NPC> NPC = client.getNpcs();
+			for(NPC npc : NPC)
 			{
-				recolorGate();
+				if(npc.getId() == npcID)
+				{
+					resetnpc = true;
+				}
+			}
+			if(!resetnpc)
+			{
+				resetNPC(event.getNpc());
 			}
 		}
 	}
@@ -264,35 +294,62 @@ public class RecolorCG extends Plugin
 		if(event.getGameState() == GameState.LOGGED_IN)
 		{
 			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+			if(regionId == REGION_ID_GAUNTLET_CORRUPTED)
+			{
+				recolorHun();
+			}
 			if(regionId == REGION_ID_GAUNTLET_LOBBY)
 			{
+				// clearing everything after every run
 				resetSceneIDs();
 				recordedGameObjects.clear();
 				recordedGroundObjects.clear();
 				recordedNPCs.clear();
 				recordedChangedNPCs.clear();
 				recordedProjectiles.clear();
+
 				if (config.random())
 				{
 					randomColor1 = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
 					randomColor2 = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
 					if(config.secondcolor_active())
 					{
-						dataProcessor.recolorData(randomColor1, randomColor2);
+						synchronized (dataProcessor)
+						{
+							dataProcessor.recolorData(randomColor1, randomColor2);
+						}
 					}
 					else
 					{
-						dataProcessor.recolorData(randomColor1, randomColor1);
+						synchronized (dataProcessor)
+						{
+							dataProcessor.recolorData(randomColor1, randomColor1);
+						}
 					}
 				}
 			}
 		}
 	}
 
+	/*
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		//TODO: DER FEHLER LIEGT EXTREM WAHRSCHEINLICH DARIN, DASS RESETGAMEOBJECT DIE SCENEID AUF 0 SETZT, STATT ZU RESETTEN
+		if (OBJECT_IDS.contains(event.getGameObject().getId()))
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "GAMEOBJECT DESPAWNED: " + event.getGameObject().getId(), null);
+			resetGameObject(event.getGameObject());
+		}
+	}
+	 */
+
 
 
 	public void clearAll()
 	{
+		resetHun();
+
 		for(int i = 0; i < recordedGameObjects.size(); i++)
 		{
 			GameObject g = recordedGameObjects.get(i);
@@ -304,7 +361,10 @@ public class RecolorCG extends Plugin
 				log.info("clearAll returned null! - GameObject");
 				continue;
 			}
-			dataProcessor.applyColors(g.getId(), "GameObject", model, false);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "GameObject", model, false);
+			}
 		}
 
 		for(int i = 0; i < recordedGroundObjects.size(); i++)
@@ -318,8 +378,10 @@ public class RecolorCG extends Plugin
 				log.info("clearAll returned null! - GroundObject");
 				continue;
 			}
-
-			dataProcessor.applyColors(g.getId(), "GroundObject", model, false);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "GroundObject", model, false);
+			}
 		}
 
 
@@ -331,19 +393,27 @@ public class RecolorCG extends Plugin
 				log.info("clearAll returned null! - GroundObject");
 				continue;
 			}
-			dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), false);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), false);
+			}
 		}
 
 
 		for(int i = 0; i < recordedProjectiles.size(); i++)
 		{
 			Projectile g = recordedProjectiles.get(i);
-			dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), false);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), false);
+			}
 		}
 
 	}
 
 	public void recolorAll(){
+		recolorHun();
+
 		for(int i = 0; i < recordedGameObjects.size(); i++)
 		{
 			GameObject g = recordedGameObjects.get(i);
@@ -355,7 +425,10 @@ public class RecolorCG extends Plugin
 				log.info("recolorAll returned null! - GameObject");
 				continue;
 			}
-			dataProcessor.applyColors(g.getId(), "GameObject", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "GameObject", model, true);
+			}
 			recordedModels.add(model);
 			sceneIDs.add(model.getSceneId());
 			model.setSceneId(0);
@@ -380,7 +453,10 @@ public class RecolorCG extends Plugin
 				continue;
 			}
 
-			dataProcessor.applyColors(g.getId(), "GroundObject", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(g.getId(), "GroundObject", model, true);
+			}
 			recordedModels.add(model);
 			sceneIDs.add(model.getSceneId());
 			model.setSceneId(0);
@@ -395,7 +471,10 @@ public class RecolorCG extends Plugin
 					log.info("recolorAll returned null! - NPC");
 					continue;
 				}
-				dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+				}
 			}
 		}
 		else if (!config.npcRecolor() && config.tornado())
@@ -410,7 +489,10 @@ public class RecolorCG extends Plugin
 				}
 				if(g.getId() == 9039)
 				{
-					dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+					synchronized (dataProcessor)
+					{
+						dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+					}
 				}
 			}
 		}
@@ -428,7 +510,10 @@ public class RecolorCG extends Plugin
 				{
 					continue;
 				}
-				dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
+				}
 			}
 		}
 
@@ -437,7 +522,10 @@ public class RecolorCG extends Plugin
 			for (int i = 0; i < recordedProjectiles.size(); i++)
 			{
 				Projectile g = recordedProjectiles.get(i);
-				dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), true);
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), true);
+				}
 			}
 		}
 
@@ -454,7 +542,10 @@ public class RecolorCG extends Plugin
 			return;
 		}
 
-		dataProcessor.applyColors(gameObject.getId(), "GameObject", model, true);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(gameObject.getId(), "GameObject", model, true);
+		}
 		recordedModels.add(model);
 		sceneIDs.add(model.getSceneId());
 		model.setSceneId(0);
@@ -478,7 +569,10 @@ public class RecolorCG extends Plugin
 			return;
 		}
 
-		dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, true);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, true);
+		}
 		recordedModels.add(model);
 		sceneIDs.add(model.getSceneId());
 		model.setSceneId(0);
@@ -496,7 +590,10 @@ public class RecolorCG extends Plugin
 				return;
 			}
 
-			dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			}
 		}
 
 
@@ -512,8 +609,10 @@ public class RecolorCG extends Plugin
 				log.info("recolorNPC returned null! v2");
 				return;
 			}
-
-			dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			}
 		}
 
 		if(config.npcRecolor() && !config.tornado())
@@ -528,7 +627,10 @@ public class RecolorCG extends Plugin
 				log.info("recolorNPC returned null! v3");
 				return;
 			}
-			dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+			}
 		}
 	}
 
@@ -542,7 +644,10 @@ public class RecolorCG extends Plugin
 				log.info("recolorProjectile returned null!");
 				return;
 			}
-			dataProcessor.applyColors(projectile.getId(), "Projectile", model, true);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(projectile.getId(), "Projectile", model, true);
+			}
 		}
 	}
 
@@ -550,10 +655,22 @@ public class RecolorCG extends Plugin
 	{
 		Renderable renderable = gameObject.getRenderable();
 		Model model = verifyModel(renderable);
-		dataProcessor.applyColors(gameObject.getId(), "GameObject", model, false);
-		recordedModels.add(model);
-		sceneIDs.add(model.getSceneId());
-		model.setSceneId(0);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(gameObject.getId(), "GameObject", model, false);
+		}
+		if(model.getSceneId() == 0)
+		{
+			for(int i = 0; i < recordedModels.size();i++)
+			{
+				if(recordedModels.get(i).equals(model))
+				{
+					recordedModels.get(i).setSceneId(sceneIDs.get(i));
+					recordedModels.remove(i);
+					sceneIDs.remove(i);
+				}
+			}
+		}
 	}
 
 	public void resetGroundObject(GroundObject groundObject)
@@ -565,10 +682,22 @@ public class RecolorCG extends Plugin
 			log.info("resetGroundObject returned null!");
 			return;
 		}
-		dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, false);
-		recordedModels.add(model);
-		sceneIDs.add(model.getSceneId());
-		model.setSceneId(0);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, false);
+		}
+		if(model.getSceneId() == 0)
+		{
+			for(int i = 0; i < recordedModels.size();i++)
+			{
+				if(recordedModels.get(i).equals(model))
+				{
+					recordedModels.get(i).setSceneId(sceneIDs.get(i));
+					recordedModels.remove(i);
+					sceneIDs.remove(i);
+				}
+			}
+		}
 	}
 
 	public void resetNPC(NPC npc)
@@ -579,7 +708,10 @@ public class RecolorCG extends Plugin
 			log.info("resetNPC returned null!");
 			return;
 		}
-		dataProcessor.applyColors(npc.getId(), "NPC", model, false);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(npc.getId(), "NPC", model, false);
+		}
 	}
 
 	public void resetProjectile(Projectile projectile)
@@ -590,7 +722,10 @@ public class RecolorCG extends Plugin
 			log.info("resetProjectile returned null!");
 			return;
 		}
-		dataProcessor.applyColors(projectile.getId(), "Projectile", model, false);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(projectile.getId(), "Projectile", model, false);
+		}
 	}
 
 	public void recolorGate()
@@ -607,9 +742,70 @@ public class RecolorCG extends Plugin
 					log.info("recolorGate returned null!");
 					continue;
 				}
-				dataProcessor.applyColors(g.getId(), "GameObject", model, true);
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(g.getId(), "GameObject", model, true);
+				}
+				recordedModels.add(model);
+				sceneIDs.add(model.getSceneId());
+				model.setSceneId(0);
 			}
 		}
+	}
+
+	private void recolorHun()
+	{
+		if(config.npcRecolor())
+		{
+			Player p = client.getLocalPlayer();
+			p.getPlayerComposition().setTransformedNpcId(9035);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(9035, "NPC", p.getModel(), true);
+			}
+			p.getPlayerComposition().setTransformedNpcId(9036);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(9036, "NPC", p.getModel(), true);
+			}
+			p.getPlayerComposition().setTransformedNpcId(9037);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(9037, "NPC", p.getModel(), true);
+			}
+			p.getPlayerComposition().setTransformedNpcId(9038);
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(9038, "NPC", p.getModel(), true);
+			}
+			p.getPlayerComposition().setTransformedNpcId(-1);
+		}
+	}
+
+	private void resetHun()
+	{
+		Player p = client.getLocalPlayer();
+		p.getPlayerComposition().setTransformedNpcId(9035);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(9035, "NPC", p.getModel(), false);
+		}
+		p.getPlayerComposition().setTransformedNpcId(9036);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(9036, "NPC", p.getModel(), false);
+		}
+		p.getPlayerComposition().setTransformedNpcId(9037);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(9037, "NPC", p.getModel(), false);
+		}
+		p.getPlayerComposition().setTransformedNpcId(9038);
+		synchronized (dataProcessor)
+		{
+			dataProcessor.applyColors(9038, "NPC", p.getModel(), false);
+		}
+		p.getPlayerComposition().setTransformedNpcId(-1);
 	}
 
 	private Model verifyModel(Renderable renderable)
@@ -632,7 +828,6 @@ public class RecolorCG extends Plugin
 
 	private void resetSceneIDs()
 	{
-		log.info(sceneIDs.size() + " SIZEEE");
 		int size = sceneIDs.size();
 		for (int i = 0; i < size; i++)
 		{
@@ -640,7 +835,6 @@ public class RecolorCG extends Plugin
 		}
 		recordedModels.clear();
 		sceneIDs.clear();
-		log.info(sceneIDs.size() + " SIZEEE");
 	}
 
 }

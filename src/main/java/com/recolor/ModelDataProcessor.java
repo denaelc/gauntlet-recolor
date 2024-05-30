@@ -129,9 +129,38 @@ public class ModelDataProcessor
         int[] faceColors2 = model.getFaceColors2();
         int[] faceColors3 = model.getFaceColors3();
 
-        System.arraycopy(f1, 0, faceColors, 0, f1.length);
-        System.arraycopy(f2, 0, faceColors2, 0, f2.length);
-        System.arraycopy(f3, 0, faceColors3, 0, f3.length);
+        //int length1 = Math.min(f1.length, faceColors.length);
+        //int length2 = Math.min(f2.length, faceColors2.length);
+        //int length3 = Math.min(f3.length, faceColors3.length);
+        if (f1.length <= faceColors.length && f2.length <= faceColors2.length && f3.length <= faceColors3.length)
+        {
+            System.arraycopy(f1, 0, faceColors, 0, f1.length);
+            System.arraycopy(f2, 0, faceColors2, 0, f2.length);
+            System.arraycopy(f3, 0, faceColors3, 0, f3.length);
+        }
+        else{
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"))) {
+                for (int i = 0; i < faceColors.length; i++) {
+                    writer.write(faceColors[i] + ", ");
+                }
+                writer.newLine();
+                for (int i = 0; i < faceColors2.length; i++) {
+                    writer.write(faceColors2[i] + ", ");
+                }
+                writer.newLine();
+                for (int i = 0; i < faceColors3.length; i++) {
+                    writer.write(faceColors3[i] + ", ");
+                }
+                writer.newLine();
+                for (int i = 0; i < f1.length; i++) {
+                    writer.write(f1[i] + ", ");
+                }
+                writer.newLine();
+                System.out.println("Data written to file successfully.");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     // returns the new color in the rs2hsb format

@@ -116,8 +116,8 @@ public interface RecolorCGConfig extends Config
 
 	@ConfigItem(
 			keyName = "projectileRecolor",
-			name = "Recolor Hunllef's projectiles",
-			description = "Recolor Hunllef's mage, range and prayer disabling attack.",
+			name = "Recolor projectiles",
+			description = "Recolor all the projectiles from NPCs in the corrupted gauntlet.",
 			position = 1,
 			section = togglesSection
 	)
