@@ -25,12 +25,13 @@
 package com.recolor;
 
 import net.runelite.api.Model;
-
+import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
 
 
+@Slf4j
 public class ModelDataProcessor
 {
     private Map<String, Map<Integer, int[][]>> originalColorData = new HashMap<>();
@@ -129,37 +130,15 @@ public class ModelDataProcessor
         int[] faceColors2 = model.getFaceColors2();
         int[] faceColors3 = model.getFaceColors3();
 
-        //int length1 = Math.min(f1.length, faceColors.length);
-        //int length2 = Math.min(f2.length, faceColors2.length);
-        //int length3 = Math.min(f3.length, faceColors3.length);
         if (f1.length <= faceColors.length && f2.length <= faceColors2.length && f3.length <= faceColors3.length)
         {
             System.arraycopy(f1, 0, faceColors, 0, f1.length);
             System.arraycopy(f2, 0, faceColors2, 0, f2.length);
             System.arraycopy(f3, 0, faceColors3, 0, f3.length);
         }
-        else{
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"))) {
-                for (int i = 0; i < faceColors.length; i++) {
-                    writer.write(faceColors[i] + ", ");
-                }
-                writer.newLine();
-                for (int i = 0; i < faceColors2.length; i++) {
-                    writer.write(faceColors2[i] + ", ");
-                }
-                writer.newLine();
-                for (int i = 0; i < faceColors3.length; i++) {
-                    writer.write(faceColors3[i] + ", ");
-                }
-                writer.newLine();
-                for (int i = 0; i < f1.length; i++) {
-                    writer.write(f1[i] + ", ");
-                }
-                writer.newLine();
-                System.out.println("Data written to file successfully.");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        else
+        {
+            log.debug("FaceColor has the wrong length.");
         }
     }
 
@@ -179,7 +158,7 @@ public class ModelDataProcessor
         return shiftHue(faceColor, shiftHueAmmount(faceColor, colorToRs2hsb(newColor)));
     }
 
-    // Method is functional, but has a lot of expensive variables. Will likely be adressed in a future iteration.
+    // Method is functional, but has a lot of variables. Will likely be adressed in a future iteration.
     // Could be implemented similar to shiftHue
     //
     // General Idea: calculate the distance of the vanilla facecolor to a reference color (65452) and then apply that distance
@@ -267,7 +246,7 @@ public class ModelDataProcessor
         return hueShiftAmount;
     }
 
-    // not my method, I dont know who to give credit for it, but I took it from AnkouOSRS, https://github.com/AnkouOSRS/cox-light-colors/blob/master/src/main/java/com/coxlightcolors/CoxLightColorsPlugin.java
+    // not my method, I don't know who to give credit for it, but I took it from AnkouOSRS, https://github.com/AnkouOSRS/cox-light-colors/blob/master/src/main/java/com/coxlightcolors/CoxLightColorsPlugin.java
     private int colorToRs2hsb(Color color)
     {
         float[] hsbVals = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
