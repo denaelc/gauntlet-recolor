@@ -43,6 +43,7 @@ import java.util.List;
 @Slf4j
 @PluginDescriptor(
 		name = "CG recolor",
+		description = "Escape the red prison today!",
 		conflicts = "117 HD"	// might be adressed in a future update of this plugin, but currently not compatible
 )
 public class RecolorCG extends Plugin
