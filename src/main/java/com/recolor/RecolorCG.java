@@ -273,6 +273,17 @@ public class RecolorCG extends Plugin
 	}
 
 	@Subscribe
+	public void onNpcChanged(NpcChanged event)
+	{
+		if (NPC_IDS.contains(event.getNpc().getId()))
+		{
+			recordedNPCs.add(event.getNpc());
+			recolorNPC(event.getNpc());
+		}
+	}
+
+
+	@Subscribe
 	public void onProjectileMoved(ProjectileMoved event)
 	{
 		if(PROJECTILE_IDS.contains(event.getProjectile().getId()))
@@ -366,8 +377,6 @@ public class RecolorCG extends Plugin
 	// resets all GameObjects, GroundObjects, NPCs (including Hunllef) and Projectiles to their default colors, if they are stored in the corresponding list.
 	public void clearAll()
 	{
-		resetHun();
-
 		for(int i = 0; i < recordedGameObjects.size(); i++)
 		{
 			GameObject g = recordedGameObjects.get(i);
@@ -429,132 +438,28 @@ public class RecolorCG extends Plugin
 
 	// recolors all GameObjects, GroundObjects, NPCs (including Hunllef) and Projectiles to their desired colors, if they are stored in the corresponding list.
 	// differentiating between NPCs and tornados, even though tornados are technically a NPC
-	public void recolorAll(){
-		if(config.npcRecolor())
+	public void recolorAll()
+	{
+		for(GameObject gameObject : recordedGameObjects)
 		{
-			recolorHun();
+			recolorGameObject(gameObject);
 		}
 
-		for(int i = 0; i < recordedGameObjects.size(); i++)
+		for(GroundObject groundObject : recordedGroundObjects)
 		{
-			GameObject g = recordedGameObjects.get(i);
-
-			Renderable renderable = g.getRenderable();
-			Model model = verifyModel(renderable);
-			if (model == null)
-			{
-				log.debug("recolorAll returned null! - GameObject");
-				continue;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "GameObject", model, true);
-			}
-			recordedModels.add(model);
-			sceneIDs.add(model.getSceneId());
-			model.setSceneId(0);
+			recolorGroundObject(groundObject);
 		}
 
-		for(int i = 0; i < recordedGroundObjects.size(); i++)
+		for(NPC npc : recordedNPCs)
 		{
-			GroundObject g = recordedGroundObjects.get(i);
-			if(g.getId() == 36047 || g.getId() == 36048)	//Damaging ground recolor depends on config
-			{
-				if(!config.groundRecolor())
-				{
-					continue;
-				}
-			}
-
-			Renderable renderable = g.getRenderable();
-			Model model = verifyModel(renderable);
-			if (model == null)
-			{
-				log.debug("recolorAll returned null! - GroundObject");
-				continue;
-			}
-
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "GroundObject", model, true);
-			}
-			recordedModels.add(model);
-			sceneIDs.add(model.getSceneId());
-			model.setSceneId(0);
+			recolorNPC(npc);
 		}
 
-		if(config.npcRecolor() && config.tornado())
-		{
-			for (int i = 0; i < recordedNPCs.size(); i++)
-			{
-				NPC g = recordedNPCs.get(i);
-				if(g.getModel() == null){
-					log.debug("recolorAll returned null! - NPC");
-					continue;
-				}
-				synchronized (dataProcessor)
-				{
-					dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
-				}
-			}
-		}
-		else if (!config.npcRecolor() && config.tornado())
-		{
-			for (int i = 0; i < recordedNPCs.size(); i++)
-			{
-				NPC g = recordedNPCs.get(i);
-				if(g.getModel() == null)
-				{
-					log.debug("recolorAll returned null! - NPC2");
-					continue;
-				}
-				if(g.getId() == 9039)
-				{
-					synchronized (dataProcessor)
-					{
-						dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
-					}
-				}
-			}
-		}
-		else if (config.npcRecolor() && !config.tornado())
-		{
-			for (int i = 0; i < recordedNPCs.size(); i++)
-			{
-				NPC g = recordedNPCs.get(i);
-				if(g.getModel() == null)
-				{
-					log.debug("recolorAll returned null! - NPC3");
-					continue;
-				}
-				if(g.getId() == 9039)
-				{
-					continue;
-				}
-				synchronized (dataProcessor)
-				{
-					dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), true);
-				}
-			}
-		}
-
-		if(config.projectileRecolor())
-		{
-			for (int i = 0; i < recordedProjectiles.size(); i++)
-			{
-				Projectile g = recordedProjectiles.get(i);
-				synchronized (dataProcessor)
-				{
-					dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), true);
-				}
-			}
-		}
 	}
 
 	public void recolorGameObject(GameObject gameObject)
 	{
 		Renderable renderable = gameObject.getRenderable();
-
 		Model model = verifyModel(renderable);
 		if (model == null)
 		{
@@ -573,8 +478,8 @@ public class RecolorCG extends Plugin
 
 	public void recolorGroundObject(GroundObject groundObject)
 	{
-
-		if(groundObject.getId() == 36047 || groundObject.getId() == 36048){	//Damaging ground recolor depends on config
+		if(groundObject.getId() == 36047 || groundObject.getId() == 36048)
+		{	//Damaging ground recolor depends on config
 			if(!config.groundRecolor())
 			{
 				return;
@@ -601,54 +506,81 @@ public class RecolorCG extends Plugin
 
 	public void recolorNPC(NPC npc)
 	{
-		if(config.npcRecolor() && config.tornado())
+		// Spotanim needs to be set if we mage the npc that has to be recolored
+		if (client.getLocalPlayer().getInteracting() != null)
 		{
-			Model model = npc.getModel();
-			if (model == null)
+			if(client.getLocalPlayer().getInteracting().hasSpotAnim(1724) || client.getLocalPlayer().getInteracting().hasSpotAnim(85))
 			{
-				log.debug("recolorNPC returned null! v1");
-				return;
-			}
-
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+				client.getLocalPlayer().getInteracting().createSpotAnim(0,-1,0,0);
 			}
 		}
 
-		if(!config.npcRecolor() && config.tornado())
+		if (config.tornado())
 		{
-			if(npc.getId() != 9039)
+			if (config.npcRecolor())    // tornados AND npcs are to be recolored - we can use the same call for both
 			{
-				return;
+				if (npc.getModel() == null)
+				{
+					log.debug("recolorAll returned null! - NPC");
+					return;
+				}
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), true);
+				}
 			}
-			Model model = npc.getModel();
-			if (model == null)
+			else	// tornados are to be recolored, npcs not - we need to differentiate
 			{
-				log.debug("recolorNPC returned null! v2");
-				return;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+				if(npc.getModel() == null)
+				{
+					log.debug("recolorAll returned null! - NPC");
+					return;
+				}
+				synchronized (dataProcessor)
+				{
+					if(npc.getId() == 9039)
+					{
+						dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), true);
+					}
+					else
+					{
+						dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
+					}
+				}
 			}
 		}
-
-		if(config.npcRecolor() && !config.tornado())
+		else	// if-case inverted
 		{
-			if(npc.getId() == 9039)
+			if(config.npcRecolor())	// tornados are NOT to be recolored, npcs are - we need to differentiate
 			{
-				return;
+				if(npc.getModel() == null)
+				{
+					log.debug("recolorAll returned null! - NPC");
+					return;
+				}
+				synchronized (dataProcessor)
+				{
+					if(npc.getId() == 9039)
+					{
+							dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
+					}
+					else
+					{
+						dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), true);
+					}
+				}
 			}
-			Model model = npc.getModel();
-			if (model == null)
+			else	//tornados AND npcs are NOT to be recolored - we can use the same call for both
 			{
-				log.debug("recolorNPC returned null! v3");
-				return;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(npc.getId(), "NPC", model, true);
+				if(npc.getModel() == null)
+				{
+					log.debug("recolorAll returned null! - NPC");
+					return;
+				}
+				synchronized (dataProcessor)
+				{
+					dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
+				}
 			}
 		}
 	}
@@ -694,63 +626,6 @@ public class RecolorCG extends Plugin
 				model.setSceneId(0);
 			}
 		}
-	}
-
-	// Really absurd method, but it works. Using the NpcChanged event instead won't recolor mage hunllef mid-fight.
-	// If u find a better way to reliably recolor all of Hunllefs forms, message me.
-	private void recolorHun()
-	{
-		if(config.npcRecolor())
-		{
-			Player p = client.getLocalPlayer();
-			p.getPlayerComposition().setTransformedNpcId(9035);
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(9035, "NPC", p.getModel(), true);
-			}
-			p.getPlayerComposition().setTransformedNpcId(9036);
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(9036, "NPC", p.getModel(), true);
-			}
-			p.getPlayerComposition().setTransformedNpcId(9037);
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(9037, "NPC", p.getModel(), true);
-			}
-			p.getPlayerComposition().setTransformedNpcId(9038);
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(9038, "NPC", p.getModel(), true);
-			}
-			p.getPlayerComposition().setTransformedNpcId(-1);
-		}
-	}
-
-	private void resetHun()
-	{
-		Player p = client.getLocalPlayer();
-		p.getPlayerComposition().setTransformedNpcId(9035);
-		synchronized (dataProcessor)
-		{
-			dataProcessor.applyColors(9035, "NPC", p.getModel(), false);
-		}
-		p.getPlayerComposition().setTransformedNpcId(9036);
-		synchronized (dataProcessor)
-		{
-			dataProcessor.applyColors(9036, "NPC", p.getModel(), false);
-		}
-		p.getPlayerComposition().setTransformedNpcId(9037);
-		synchronized (dataProcessor)
-		{
-			dataProcessor.applyColors(9037, "NPC", p.getModel(), false);
-		}
-		p.getPlayerComposition().setTransformedNpcId(9038);
-		synchronized (dataProcessor)
-		{
-			dataProcessor.applyColors(9038, "NPC", p.getModel(), false);
-		}
-		p.getPlayerComposition().setTransformedNpcId(-1);
 	}
 
 	// Model.getModel() returns null, therefore we need to do an instanceof check
