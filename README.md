@@ -37,7 +37,7 @@ Enable this option to change the color of the Hunllef's tornadoes.
 
 ## Issues and Support
 
-If you encounter any issues or have questions about the CG Recolor plugin, please reach out through the RuneLite support channels, or submit an issue on the plugin's GitHub repository.
+If you have any issues or questions about the CG Recolor plugin, please submit an issue on the plugin's GitHub repository or send me a DM on Discord. My Discord-username is "tegritaet".
 
 ---
 
