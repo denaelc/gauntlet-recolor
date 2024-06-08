@@ -205,16 +205,11 @@ public class RecolorCG extends Plugin
 				recolorGameObject(event.getGameObject());
 			}
 			// only needs to happen on spawn when in boss room. For every other situation, recoloring on gamestate-changes is sufficient
-			if(inBossRoom())
+			if(client.getVarbitValue(9177) == 1)
 			{
-				if(ID == 36000|| ID == 36001)
+				if(ID == 35992||ID == 36000|| ID == 36001)
 				{
 					recolorGameObject(event.getGameObject());
-				}
-				if(ID == 35992)	//hunlleff room spawns 35992 when entered. This can be used to recolor the gate again (otherwise it will be red again)
-				{
-					recolorGameObject(event.getGameObject());
-					recolorGate();
 				}
 			}
 		}
@@ -228,7 +223,7 @@ public class RecolorCG extends Plugin
 			recordedGroundObjects.add(event.getGroundObject());
 
 			// only needs to happen on spawn when in boss room. For every other situation, recoloring on gamestate-changes is sufficient
-			if(inBossRoom())
+			if(client.getVarbitValue(9117) == 1)
 			{
 				if(event.getGroundObject().getId() == 36047 || event.getGroundObject().getId() == 36048|| event.getGroundObject().getId() == 36046)
 				{
@@ -323,31 +318,13 @@ public class RecolorCG extends Plugin
 		}
 	}
 
-	// Recolors the gate incase the player runs out of time to prevent it being red for a few gameticks
 	@Subscribe
-	public void onAnimationChanged(AnimationChanged event)
+	public void onVarbitChanged(VarbitChanged event)
 	{
-		if(client.getGameState() == GameState.LOGGED_IN)
+		if(event.getVarbitId() == 9177 && event.getValue() == 1)	// varbit 9177 is 1 if player is in the boss room
 		{
-			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-			if(regionId == REGION_ID_GAUNTLET_CORRUPTED)
-			{
-				if (event.getActor().getAnimation() == 1816)
-				{
-					recolorGate();
-				}
-			}
+			recolorGate();
 		}
-	}
-
-	// checks if the player is within 9 tiles of the center Tile (which can be 1 tile outside the room, but is decent enough for our purpose)
-	public boolean inBossRoom()
-	{
-		if(WorldPoint.fromLocalInstance(client,client.getLocalPlayer().getLocalLocation()).distanceTo(centerTile) <= 9)
-		{
-			return true;
-		}
-		return false;
 	}
 
 	// resets all GameObjects, GroundObjects, NPCs (including Hunllef) and Projectiles to their default colors, if they are stored in the corresponding list.
@@ -623,7 +600,7 @@ public class RecolorCG extends Plugin
 		}
 	}
 
-	// resets all changed SceneIDs of the models to prevent Issues outside of the gauntlet
+	// resets all changed SceneIDs of the models to prevent issues outside of the gauntlet
 	private void resetSceneIDs()
 	{
 		int size = sceneIDs.size();

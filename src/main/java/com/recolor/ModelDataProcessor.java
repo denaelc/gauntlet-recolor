@@ -42,7 +42,8 @@ public class ModelDataProcessor
                     currentType = line.split(" ")[0];
                     currentId = Integer.parseInt(line.split(": ")[1].split(" ")[0]);
                     colors = new int[3][];
-                } else if (line.startsWith("FaceColors"))
+                }
+                else if (line.startsWith("FaceColors"))
                 {
                     int index = Integer.parseInt(line.substring(10, 11)) - 1;
                     colors[index] = Arrays.stream(line.split(": ")[1].replace("[", "").replace("]", "").split(", "))
@@ -63,7 +64,8 @@ public class ModelDataProcessor
         originalColorData.forEach((type, models) ->
         {
             Map<Integer, int[][]> recoloredMap = new HashMap<>();
-            models.forEach((id, colors) -> {
+            models.forEach((id, colors) ->
+            {
                 int[][] recoloredColors = new int[colors.length][];
                 for (int i = 0; i < colors.length; i++)
                 {
@@ -79,7 +81,8 @@ public class ModelDataProcessor
     private int[] recolor(int[] originalColors, Color newColor, Color secondaryColor)
     {
         int[] newColors = new int[originalColors.length];
-        for (int i = 0; i < originalColors.length; i++) {
+        for (int i = 0; i < originalColors.length; i++)
+        {
             // Color needs to be in the relevant range and > 50, else there will be visual bugs
             if (inRange(originalColors[i]) &&Math.abs(originalColors[i]) > 50)
             {
