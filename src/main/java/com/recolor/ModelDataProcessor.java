@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
+import java.util.List;
 
 
 @Slf4j
@@ -13,10 +14,14 @@ public class ModelDataProcessor
     private Map<String, Map<Integer, int[][]>> originalColorData = new HashMap<>();
     private Map<String, Map<Integer, int[][]>> recoloredColorData = new HashMap<>();
 
-    public ModelDataProcessor(String filePath, Color newColor, Color secondaryColor) throws IOException
+    private static final List<Integer> GREEN_OBJECTS = Arrays.asList(35966, 35969, 35970, 35975, 35976, 35978, 35979, 36003, 36004, 36005, 36006, 36007,36008);
+    private static final int greenReference = 10758;
+    private static final int redReference = 65452;
+
+    public ModelDataProcessor(String filePath, Color newColor, Color secondaryColor, Boolean harmonize) throws IOException
     {
         cacheData(filePath);
-        recolorData(newColor, secondaryColor);
+        recolorData(newColor, secondaryColor, harmonize);
     }
 
     // creates a hashmap with all the facecolors, IDs and types (gameObject, Groundobject etc.)
@@ -58,7 +63,7 @@ public class ModelDataProcessor
     }
 
     // creates a second hashmap with the recolored values, based of the vanilla hashmap
-    public void recolorData(Color newColor, Color secondaryColor)
+    public void recolorData(Color newColor, Color secondaryColor, Boolean harmonize)
     {
         recoloredColorData.clear();
         originalColorData.forEach((type, models) ->
@@ -69,7 +74,7 @@ public class ModelDataProcessor
                 int[][] recoloredColors = new int[colors.length][];
                 for (int i = 0; i < colors.length; i++)
                 {
-                    recoloredColors[i] = recolor(colors[i], newColor, secondaryColor);
+                    recoloredColors[i] = recolor(colors[i], newColor, secondaryColor, id, harmonize);
                 }
                 recoloredMap.put(id, recoloredColors);
             });
@@ -78,15 +83,15 @@ public class ModelDataProcessor
     }
 
     // recolors a single array of colors (e.g. facecolors1 of a single model)
-    private int[] recolor(int[] originalColors, Color newColor, Color secondaryColor)
+    private int[] recolor(int[] originalColors, Color newColor, Color secondaryColor, int id, Boolean harmonize)
     {
         int[] newColors = new int[originalColors.length];
         for (int i = 0; i < originalColors.length; i++)
         {
             // Color needs to be in the relevant range and > 50, else there will be visual bugs
-            if (inRange(originalColors[i]) &&Math.abs(originalColors[i]) > 50)
+            if (Math.abs(originalColors[i]) > 50)
             {
-                newColors[i] = newColorHsb(originalColors[i], newColor, secondaryColor);
+                newColors[i] = newColorHsb(originalColors[i], newColor, secondaryColor, id, harmonize);
             }
             else
             {
@@ -94,12 +99,6 @@ public class ModelDataProcessor
             }
         }
         return newColors;
-    }
-
-    // Making sure that the colors in the relevant range of colors
-    public boolean inRange(int facecolor)
-    {
-        return Math.abs(59327 - facecolor) < 10000 || Math.abs(959 - facecolor) < 10000;
     }
 
     // applies the colors to a model
@@ -122,23 +121,32 @@ public class ModelDataProcessor
     }
 
     // returns the new color in the rs2hsb format
-    public int newColorHsb(int faceColor, Color newColor, Color secondaryColor)
+    public int newColorHsb(int faceColor, Color newColor, Color secondaryColor, int id, Boolean harmonize)
     {
+
         // > 60k are mostly the very bright colors.
         if(faceColor > 60000)
         {
-            if(secondaryColor != newColor)
+            if(!secondaryColor.equals(newColor))
             {
                 return brightColors(faceColor, secondaryColor);
             }
             return brightColors(faceColor, newColor);
         }
+
         // all other colors should only be Hue shifted. This prevents normally unlit models from becoming too bright or too dark
-        return shiftHue(faceColor, shiftHueAmmount(faceColor, colorToRs2hsb(newColor)));
+        if(harmonize)
+        {
+            if(id == 36048)
+            {
+                return hueShift(faceColor, newColor, redReference); // can't ever harmonize the damaging floor or it will be practically invisible
+            }
+            return hueShift(faceColor, newColor, faceColor);    // if the referenceColor equals the faceColor, the Hue of the newColor will be applied
+        }
+        return hueShift(faceColor, newColor, redReference);
     }
 
     // Method is functional, but has a lot of variables. Will likely be adressed in a future iteration.
-    // Could be implemented similar to shiftHue
     //
     // General Idea: calculate the distance of the vanilla facecolor to a reference color (65452) and then apply that distance
     // to the new (reference) color, to get a similar shifted color.
@@ -154,7 +162,7 @@ public class ModelDataProcessor
         int hueRef = extractHsbValues(newColorHsb, 6, 11);
         int saturationRef = extractHsbValues(newColorHsb, 3, 8);
         int brightnessRef = extractHsbValues(newColorHsb, 7, 1);
-        // values for the current reference color (65452)
+        // pre-calculated values for the current reference color (65452)
         int referenceHue = 63;
         int referenceSat = 7;
         int referenceBright = 44;
@@ -184,45 +192,32 @@ public class ModelDataProcessor
         return (newHue << 10) + (newSat << 7) + newBright;
     }
 
+    // same concept as brightColors, but only shifts Hue
+    public int hueShift(int faceColor, Color newColor, int referenceColor)
+    {
+        int newColorHsb = colorToRs2hsb(newColor);
+
+        // values of the facecolor
+        int hueFace = extractHsbValues(faceColor, 6, 11);
+        int saturationFace = extractHsbValues(faceColor, 3, 8);
+        int brightnessFace = extractHsbValues(faceColor, 7, 1);
+        // value of the new reference color
+        int hueRef = extractHsbValues(newColorHsb, 6, 11);
+        // value for the current reference color
+        int referenceHue = extractHsbValues(referenceColor, 6, 11);
+
+        int hueDiff = referenceHue - hueFace;
+
+        int newHue = hueRef - hueDiff;
+        newHue = (newHue % 64 + 64) % 64;
+
+        return (newHue << 10) + (saturationFace << 7) + brightnessFace;
+    }
+
     // Returns the hsb values
     static int extractHsbValues(int hsbColor, int k, int p)
     {
         return (((1 << k) - 1) & (hsbColor >> (p - 1)));
-    }
-
-    // Shifts the Hue by a given shiftAmmount
-    public static int shiftHue(int hsbValue, int hueShiftAmmount)
-    {
-        // Extracting the Hue
-        int hue = (hsbValue >> 10) & 0x3F;
-
-        // calculating the Hue-difference
-        hue = (hue + hueShiftAmmount) % 64; // 64, since Hue is only in the first 6 bits
-        if (hue < 0)
-        {
-            hue += 64; // handling negative Hue values
-        }
-
-        return (hsbValue & ~0xFC00) | (hue << 10);
-    }
-
-    // Calculates the hue-shift-ammount between two given values
-    public static int shiftHueAmmount(int hsbValue1, int hsbValue2)
-    {
-
-        int hue1 = (hsbValue1 >> 10) & 0x3F;
-        int hue2 = (hsbValue2 >> 10) & 0x3F;
-
-        int hueShiftAmount = hue2 - hue1;
-        if (hueShiftAmount < -32)
-        {
-            hueShiftAmount += 64; // handling negative values
-        }
-        else if (hueShiftAmount > 32)
-        {
-            hueShiftAmount -= 64; // handling positive values
-        }
-        return hueShiftAmount;
     }
 
     // not my method, I don't know who to give credit for it, but I took it from AnkouOSRS, https://github.com/AnkouOSRS/cox-light-colors/blob/master/src/main/java/com/coxlightcolors/CoxLightColorsPlugin.java

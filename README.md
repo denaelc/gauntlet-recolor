@@ -35,6 +35,10 @@ Enable this option to recolor the damaging floor. Note that turning this on can 
 
 Enable this option to change the color of the Hunllef's tornadoes.
 
+### Harmonize colors
+
+Enable this option for a more unified color scheme.
+
 ## Issues and Support
 
 If you have any issues or questions about the CG Recolor plugin, please submit an issue on the plugin's GitHub repository or send me a DM on Discord. My Discord-username is "tegritaet".

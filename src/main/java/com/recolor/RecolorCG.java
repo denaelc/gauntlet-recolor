@@ -26,7 +26,7 @@ public class RecolorCG extends Plugin
 {
 
 	// Declarations
-	private static final List<Integer> OBJECT_IDS = Arrays.asList(35965, 35966, 35967, 35968, 35968, 35969, 35970, 35971, 35972, 35972, 35973, 35974, 35975, 35976, 35977, 35980, 35992, 35994, 35994, 35995, 35996, 35997, 35998, 35999, 36000, 36001, 36002, 36003, 36004, 36005, 36006, 36007, 36008, 37337);
+	private static final List<Integer> OBJECT_IDS = Arrays.asList(35965, 35966, 35967, 35968, 35968, 35969, 35970, 35971, 35972, 35972, 35973, 35974, 35975, 35976, 35977, 35978, 35979, 35980, 35992, 35994, 35994, 35995, 35996, 35997, 35998, 35999, 36000, 36001, 36002, 36003, 36004, 36005, 36006, 36007, 36008, 37337);
 	private static final List<Integer> GROUND_IDS = Arrays.asList(36046, 36047, 36048, 36052, 36053, 36054, 36055, 36056, 36057, 36058, 36059);
 	private static final List<Integer> NPC_IDS = Arrays.asList(9035, 9036, 9037, 9038, 9039, 9040, 9041, 9042, 9043, 9044, 9045, 9046, 9047, 9048);
 	private static final List<Integer> PROJECTILE_IDS = Arrays.asList(1702, 1708, 1712, 1714, 1723);
@@ -78,19 +78,19 @@ public class RecolorCG extends Plugin
 		// Vanilla model facecolors are stored in a .txt -> the new model colors can be calculated before the models even appear making the spawnEvents less expensive
 		if(config.secondcolor_active() && config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor2);
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor2, config.harmonize());
 		}
 		else if (config.secondcolor_active() && !config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.secondcolor());
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.secondcolor(), config.harmonize());
 		}
 		else if (!config.secondcolor_active() && config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor1);
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor1, config.harmonize());
 		}
 		else
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.color());
+			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.color(), config.harmonize());
 		}
 
 		// If the user is already logged in AND inside the gauntlet, Hun still needs to be recolored
@@ -130,9 +130,9 @@ public class RecolorCG extends Plugin
 			}
 			rand = null;
 
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Some game models may still be affected by the plugin. Please re-log to ensure that everything is properly reset.", null);
 			if(client.getGameState() == GameState.LOGGED_IN)
 			{
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Some game models may still be affected by the plugin. Please re-log to ensure that everything is properly reset.", null);
 				client.setGameState(GameState.LOADING);
 			}
 		});
@@ -154,14 +154,14 @@ public class RecolorCG extends Plugin
 				{
 					synchronized (dataProcessor)
 					{
-						dataProcessor.recolorData(config.color(), config.secondcolor());
+						dataProcessor.recolorData(config.color(), config.secondcolor(), config.harmonize());
 					}
 				}
 				else
 				{
 					synchronized (dataProcessor)
 					{
-						dataProcessor.recolorData(config.color(), config.color());
+						dataProcessor.recolorData(config.color(), config.color(), config.harmonize());
 					}
 				}
 			}
@@ -171,14 +171,14 @@ public class RecolorCG extends Plugin
 				{
 					synchronized (dataProcessor)
 					{
-						dataProcessor.recolorData(randomColor1, randomColor2);
+						dataProcessor.recolorData(randomColor1, randomColor2, config.harmonize());
 					}
 				}
 				else
 				{
 					synchronized (dataProcessor)
 					{
-						dataProcessor.recolorData(randomColor1, randomColor1);
+						dataProcessor.recolorData(randomColor1, randomColor1, config.harmonize());
 					}
 				}
 			}
@@ -303,14 +303,14 @@ public class RecolorCG extends Plugin
 					{
 						synchronized (dataProcessor)
 						{
-							dataProcessor.recolorData(randomColor1, randomColor2);
+							dataProcessor.recolorData(randomColor1, randomColor2, config.harmonize());
 						}
 					}
 					else
 					{
 						synchronized (dataProcessor)
 						{
-							dataProcessor.recolorData(randomColor1, randomColor1);
+							dataProcessor.recolorData(randomColor1, randomColor1, config.harmonize());
 						}
 					}
 				}

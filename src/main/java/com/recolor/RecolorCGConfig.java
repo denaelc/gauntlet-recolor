@@ -127,4 +127,16 @@ public interface RecolorCGConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+			keyName = "harmonize",
+			name = "Harmonize colors",
+			description = "Adjusts colors for a unified look.",
+			position = 4,
+			section = togglesSection
+	)
+	default boolean harmonize()
+	{
+		return true;
+	}
+
 }
