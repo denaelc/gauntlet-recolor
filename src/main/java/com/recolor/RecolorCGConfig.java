@@ -106,13 +106,12 @@ public interface RecolorCGConfig extends Config
 			keyName = "groundRecolor",
 			name = "Recolor damaging floor",
 			description = "Recolor the floor that damages you during the Hunllef fight.",
-			warning = "This feature can significantly reduce the visibility of the damaging floor.",
 			position = 2,
 			section = togglesSection
 	)
 	default boolean groundRecolor()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(

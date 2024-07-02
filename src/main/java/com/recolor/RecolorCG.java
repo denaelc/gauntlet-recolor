@@ -78,19 +78,19 @@ public class RecolorCG extends Plugin
 		// Vanilla model facecolors are stored in a .txt -> the new model colors can be calculated before the models even appear making the spawnEvents less expensive
 		if(config.secondcolor_active() && config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor2, config.harmonize());
+			this.dataProcessor = new ModelDataProcessor("/model_facecolors.txt", randomColor1, randomColor2, config.harmonize());
 		}
 		else if (config.secondcolor_active() && !config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.secondcolor(), config.harmonize());
+			this.dataProcessor = new ModelDataProcessor("/model_facecolors.txt", config.color(), config.secondcolor(), config.harmonize());
 		}
 		else if (!config.secondcolor_active() && config.random())
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", randomColor1, randomColor1, config.harmonize());
+			this.dataProcessor = new ModelDataProcessor("/model_facecolors.txt", randomColor1, randomColor1, config.harmonize());
 		}
 		else
 		{
-			this.dataProcessor = new ModelDataProcessor("src/main/resources/model_facecolors.txt", config.color(), config.color(), config.harmonize());
+			this.dataProcessor = new ModelDataProcessor("/model_facecolors.txt", config.color(), config.color(), config.harmonize());
 		}
 
 		// If the user is already logged in AND inside the gauntlet, Hun still needs to be recolored

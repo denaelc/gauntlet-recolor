@@ -28,39 +28,46 @@ public class ModelDataProcessor
     // could be simplified if the .txt gets simplified
     private void cacheData(String filePath) throws IOException
     {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath)))
+        try (InputStream inputStream = getClass().getResourceAsStream(filePath))
         {
-            String line;
-            String currentType = null;
-            int currentId = -1;
-            int[][] colors = new int[3][];
-
-            while ((line = reader.readLine()) != null)
+            if (inputStream == null)
             {
-                if (line.trim().isEmpty()) continue;
-                if (line.contains(" ID: "))
-                {
-                    if (currentType != null && currentId != -1)
-                    {
-                        originalColorData.computeIfAbsent(currentType, k -> new HashMap<>()).put(currentId, colors);
-                    }
-                    currentType = line.split(" ")[0];
-                    currentId = Integer.parseInt(line.split(": ")[1].split(" ")[0]);
-                    colors = new int[3][];
-                }
-                else if (line.startsWith("FaceColors"))
-                {
-                    int index = Integer.parseInt(line.substring(10, 11)) - 1;
-                    colors[index] = Arrays.stream(line.split(": ")[1].replace("[", "").replace("]", "").split(", "))
-                            .mapToInt(Integer::parseInt).toArray();
-                }
+                throw new FileNotFoundException("Resource not found: " + filePath);
             }
-            if (currentType != null && currentId != -1)
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)))
             {
-                originalColorData.computeIfAbsent(currentType, k -> new HashMap<>()).put(currentId, colors);
+                String line;
+                String currentType = null;
+                int currentId = -1;
+                int[][] colors = new int[3][];
+
+                while ((line = reader.readLine()) != null)
+                {
+                    if (line.trim().isEmpty()) continue;
+                    if (line.contains(" ID: ")) {
+                        if (currentType != null && currentId != -1)
+                        {
+                            originalColorData.computeIfAbsent(currentType, k -> new HashMap<>()).put(currentId, colors);
+                        }
+                        currentType = line.split(" ")[0];
+                        currentId = Integer.parseInt(line.split(": ")[1].split(" ")[0]);
+                        colors = new int[3][];
+                    }
+                    else if (line.startsWith("FaceColors"))
+                    {
+                        int index = Integer.parseInt(line.substring(10, 11)) - 1;
+                        colors[index] = Arrays.stream(line.split(": ")[1].replace("[", "").replace("]", "").split(", "))
+                                .mapToInt(Integer::parseInt).toArray();
+                    }
+                }
+                if (currentType != null && currentId != -1)
+                {
+                    originalColorData.computeIfAbsent(currentType, k -> new HashMap<>()).put(currentId, colors);
+                }
             }
         }
     }
+
 
     // creates a second hashmap with the recolored values, based of the vanilla hashmap
     public void recolorData(Color newColor, Color secondaryColor, Boolean harmonize)
