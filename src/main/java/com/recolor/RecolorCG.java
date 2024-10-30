@@ -283,7 +283,7 @@ public class RecolorCG extends Plugin
 			{
 				clientThread.invokeAtTickEnd(()->
 				{
-				recolorAll();
+					recolorAll();
 				});
 			}
 			if(regionId == REGION_ID_GAUNTLET_LOBBY)
@@ -515,7 +515,7 @@ public class RecolorCG extends Plugin
 				{
 					if(npc.getId() == 9039)
 					{
-							dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
+						dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
 					}
 					else
 					{
@@ -590,13 +590,20 @@ public class RecolorCG extends Plugin
 		}
 		else
 		{
-			Model model = renderable.getModel();
-			if (model == null)
+			try
 			{
-				log.debug("verifyModel returned null!");
+				Model model = renderable.getModel();
+				if (model == null)
+				{
+					log.debug("verifyModel returned null!");
+					return null;
+				}
+				return model;
+			}
+			catch (NullPointerException e)
+			{
 				return null;
 			}
-			return model;
 		}
 	}
 
