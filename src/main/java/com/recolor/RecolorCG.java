@@ -30,7 +30,6 @@ public class RecolorCG extends Plugin
 	private static final List<Integer> GROUND_IDS = Arrays.asList(36046, 36047, 36048, 36052, 36053, 36054, 36055, 36056, 36057, 36058, 36059);
 	private static final List<Integer> NPC_IDS = Arrays.asList(9035, 9036, 9037, 9038, 9039, 9040, 9041, 9042, 9043, 9044, 9045, 9046, 9047, 9048);
 	private static final List<Integer> PROJECTILE_IDS = Arrays.asList(1702, 1708, 1712, 1714, 1723);
-	private final WorldPoint centerTile = new WorldPoint(1976, 5687, 1);	// one of the 4 center tiles in the boss room
 	private static final int REGION_ID_GAUNTLET_LOBBY = 12127;
 	private static final int REGION_ID_GAUNTLET_CORRUPTED = 7768;
 	//private static final int REGION_ID_GAUNTLET_NORMAL = 7512;
@@ -38,12 +37,6 @@ public class RecolorCG extends Plugin
 	// Will likely use the ITEM_IDS in a future update of this plugin
 	//private static final List<Integer> ITEM_IDS = Arrays.asList(23824, 23834, 23821, 23822, 23823, 23820, 23835, 23837, 23838, 23585, 23582, 23583, 23584, 23849, 23850, 23851, 23855, 23856, 23857);
 
-	private ArrayList<GameObject> recordedGameObjects = new ArrayList<>();
-	private ArrayList<GroundObject> recordedGroundObjects = new ArrayList<>();
-	private ArrayList<NPC> recordedNPCs = new ArrayList<>();
-	private ArrayList<Projectile> recordedProjectiles = new ArrayList<>();
-	private ArrayList<Model> recordedModels = new ArrayList<>();
-	private ArrayList<Integer> sceneIDs = new ArrayList<>();
 
 	ModelDataProcessor dataProcessor;
 	Random rand;
@@ -113,27 +106,19 @@ public class RecolorCG extends Plugin
 	{
 		clientThread.invoke(() ->
 		{
-			clearAll();
-			resetSceneIDs();
-
-			//freeing the stored data.
-			recordedGameObjects.clear();
-			recordedGroundObjects.clear();
-			recordedNPCs.clear();
-			recordedProjectiles.clear();
-			recordedModels.clear();
-			sceneIDs.clear();
-			synchronized (dataProcessor)
-			{
-				dataProcessor.cleanUp();
-				dataProcessor = null;
-			}
 			rand = null;
 
 			if(client.getGameState() == GameState.LOGGED_IN)
 			{
 				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Some game models may still be affected by the plugin. Please re-log to ensure that everything is properly reset.", null);
+				clearAll();
 				client.setGameState(GameState.LOADING);
+			}
+
+			synchronized (dataProcessor)
+			{
+				dataProcessor.cleanUp();
+				dataProcessor = null;
 			}
 		});
 	}
@@ -184,8 +169,8 @@ public class RecolorCG extends Plugin
 			}
 			clientThread.invoke(() ->
 			{
-				clearAll();
-				recolorAll();
+				recolorNPCs(true);
+				client.setGameState(GameState.LOADING);
 			});
 		}
 
@@ -196,22 +181,7 @@ public class RecolorCG extends Plugin
 	{
 		if (OBJECT_IDS.contains(event.getGameObject().getId()))
 		{
-			recordedGameObjects.add(event.getGameObject());
-
-			// need to recolor the depleted ressources on spawn
-			int ID = event.getGameObject().getId();
-			if(ID == 35974 || ID == 35968 || ID == 35976 || ID == 35972 || ID == 35970)
-			{
-				recolorGameObject(event.getGameObject());
-			}
-			// only needs to happen on spawn when in boss room. For every other situation, recoloring on gamestate-changes is sufficient
-			if(client.getVarbitValue(9177) == 1)
-			{
-				if(ID == 35992||ID == 36000|| ID == 36001)
-				{
-					recolorGameObject(event.getGameObject());
-				}
-			}
+			recolorGameObject(event.getGameObject(), false, true);
 		}
 	}
 
@@ -220,16 +190,7 @@ public class RecolorCG extends Plugin
 	{
 		if (GROUND_IDS.contains(event.getGroundObject().getId()))
 		{
-			recordedGroundObjects.add(event.getGroundObject());
-
-			// only needs to happen on spawn when in boss room. For every other situation, recoloring on gamestate-changes is sufficient
-			if(client.getVarbitValue(9117) == 1)
-			{
-				if(event.getGroundObject().getId() == 36047 || event.getGroundObject().getId() == 36048|| event.getGroundObject().getId() == 36046)
-				{
-					recolorGroundObject(event.getGroundObject());
-				}
-			}
+			recolorGroundObject(event.getGroundObject(), false, true);
 		}
 	}
 
@@ -238,8 +199,7 @@ public class RecolorCG extends Plugin
 	{
 		if (NPC_IDS.contains(event.getNpc().getId()))
 		{
-			recordedNPCs.add(event.getNpc());
-			recolorNPC(event.getNpc());
+			recolorNPC(event.getNpc(), true);
 		}
 	}
 
@@ -248,8 +208,7 @@ public class RecolorCG extends Plugin
 	{
 		if (NPC_IDS.contains(event.getNpc().getId()))
 		{
-			recordedNPCs.add(event.getNpc());
-			recolorNPC(event.getNpc());
+			recolorNPC(event.getNpc(), true);
 		}
 	}
 
@@ -259,42 +218,19 @@ public class RecolorCG extends Plugin
 	{
 		if(PROJECTILE_IDS.contains(event.getProjectile().getId()))
 		{
-			recordedProjectiles.add(event.getProjectile());
 			recolorProjectile(event.getProjectile());
 		}
 	}
 
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if(event.getGameState() == GameState.LOADING)
-		{
-			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-			if(regionId == REGION_ID_GAUNTLET_CORRUPTED)
-			{
-				recordedGameObjects.clear();
-				recordedGroundObjects.clear();
-			}
-		}
 		if(event.getGameState() == GameState.LOGGED_IN)
 		{
 			regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-			if(regionId == REGION_ID_GAUNTLET_CORRUPTED)
-			{
-				clientThread.invokeAtTickEnd(()->
-				{
-					recolorAll();
-				});
-			}
 			if(regionId == REGION_ID_GAUNTLET_LOBBY)
 			{
-				// clearing everything after every run
-				resetSceneIDs();
-				recordedGameObjects.clear();
-				recordedGroundObjects.clear();
-				recordedNPCs.clear();
-				recordedProjectiles.clear();
-
 				if (config.random())
 				{
 					randomColor1 = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
@@ -323,113 +259,83 @@ public class RecolorCG extends Plugin
 	{
 		if(event.getVarbitId() == 9177 && event.getValue() == 1)	// varbit 9177 is 1 if player is in the boss room
 		{
-			recolorGate();
+			clientThread.invoke(() ->
+			{
+				client.setGameState(GameState.LOADING);
+			});
 		}
 	}
 
-	// resets all GameObjects, GroundObjects, NPCs (including Hunllef) and Projectiles to their default colors, if they are stored in the corresponding list.
-	public void clearAll()
+
+	@Subscribe
+	public void onPreMapLoad(PreMapLoad event)
 	{
-		for(int i = 0; i < recordedGameObjects.size(); i++)
+		Scene scene = event.getScene();
+		Tile[][][] sceneTiles = scene.getTiles();
+		for (Tile[][] tiles : sceneTiles)
 		{
-			GameObject g = recordedGameObjects.get(i);
-
-			Renderable renderable = g.getRenderable();
-			Model model = verifyModel(renderable);
-			if (model == null)
+			for (Tile[] tiles1 : tiles)
 			{
-				log.debug("clearAll returned null! - GameObject");
-				continue;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "GameObject", model, false);
+				for (Tile tile : tiles1)
+				{
+					if (tile == null)
+						continue;
+					GameObject[] gameObjects = tile.getGameObjects();
+					GroundObject groundObject = tile.getGroundObject();
+					for (GameObject object : gameObjects) {
+						if(object == null)
+						{
+							continue;
+						}
+						int ID = object.getId();
+						if (OBJECT_IDS.contains(ID)) {
+							recolorGameObject(object, true, true);
+						}
+					}
+					if (groundObject != null)
+					{
+						int ID = groundObject.getId();
+						if (GROUND_IDS.contains(ID))
+						{
+							recolorGroundObject(groundObject, true, false);
+						}
+					}
+				}
 			}
 		}
-
-		for(int i = 0; i < recordedGroundObjects.size(); i++)
-		{
-			GroundObject g = recordedGroundObjects.get(i);
-
-			Renderable renderable = g.getRenderable();
-			Model model = verifyModel(renderable);
-			if (model == null)
-			{
-				log.debug("clearAll returned null! - GroundObject");
-				continue;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "GroundObject", model, false);
-			}
-		}
-
-		for(int i = 0; i < recordedNPCs.size(); i++)
-		{
-			NPC g = recordedNPCs.get(i);
-			if (g.getModel() == null)
-			{
-				log.debug("clearAll returned null! - GroundObject");
-				continue;
-			}
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "NPC", g.getModel(), false);
-			}
-		}
-
-		for(int i = 0; i < recordedProjectiles.size(); i++)
-		{
-			Projectile g = recordedProjectiles.get(i);
-			synchronized (dataProcessor)
-			{
-				dataProcessor.applyColors(g.getId(), "Projectile", g.getModel(), false);
-			}
-		}
-
 	}
 
-	// recolors all GameObjects, GroundObjects, NPCs (including Hunllef) and Projectiles to their desired colors, if they are stored in the corresponding list.
-	// differentiating between NPCs and tornados, even though tornados are technically a NPC
-	public void recolorAll()
+	public void recolorGameObject(GameObject gameObject, Boolean preMapLoad, Boolean useRecolored)
 	{
-		for(GameObject gameObject : recordedGameObjects)
-		{
-			recolorGameObject(gameObject);
-		}
 
-		for(GroundObject groundObject : recordedGroundObjects)
-		{
-			recolorGroundObject(groundObject);
-		}
-
-		for(NPC npc : recordedNPCs)
-		{
-			recolorNPC(npc);
-		}
-
-	}
-
-	public void recolorGameObject(GameObject gameObject)
-	{
 		Renderable renderable = gameObject.getRenderable();
-		Model model = verifyModel(renderable);
+		Model model;
+
+		if(preMapLoad)
+		{
+			model = verifyPreMapLoadModel(renderable);
+		}
+		else
+		{
+			model = verifyModel(renderable);
+		}
+
 		if (model == null)
 		{
-			log.debug("recolorGameObject returned null!");
+			if(!preMapLoad)
+			{
+				log.debug("recolorGameObject returned null!" + " , PreMapLoad: " + preMapLoad);
+			}
 			return;
 		}
 
 		synchronized (dataProcessor)
 		{
-			dataProcessor.applyColors(gameObject.getId(), "GameObject", model, true);
+			dataProcessor.applyColors(gameObject.getId(), "GameObject", model, useRecolored);
 		}
-		recordedModels.add(model);
-		sceneIDs.add(model.getSceneId());
-		model.setSceneId(0);
 	}
 
-	public void recolorGroundObject(GroundObject groundObject)
+	public void recolorGroundObject(GroundObject groundObject, Boolean preMapLoad, Boolean fromRecolorAll)
 	{
 		if(groundObject.getId() == 36047 || groundObject.getId() == 36048)
 		{	//Damaging ground recolor depends on config
@@ -440,7 +346,17 @@ public class RecolorCG extends Plugin
 		}
 
 		Renderable renderable = groundObject.getRenderable();
-		Model model = verifyModel(renderable);
+		Model model;
+
+		if(preMapLoad)
+		{
+			model = verifyPreMapLoadModel(renderable);
+		}
+		else
+		{
+			model = verifyModel(renderable);
+		}
+
 		if (model == null)
 		{
 			log.debug("recolorGroundObject returned null!");
@@ -451,14 +367,24 @@ public class RecolorCG extends Plugin
 		{
 			dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, true);
 		}
-		recordedModels.add(model);
-		sceneIDs.add(model.getSceneId());
-		model.setSceneId(0);
 
 	}
 
-	public void recolorNPC(NPC npc)
+	public void recolorNPC(NPC npc, Boolean useRecolored)
 	{
+		if(!useRecolored)
+		{
+			if (npc.getModel() == null)
+			{
+				log.debug("recolorAll returned null! - NPC");
+				return;
+			}
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(npc.getId(), "NPC", npc.getModel(), false);
+			}
+			return;
+		}
 		// Spotanim needs to be set if we mage the npc that has to be recolored
 		if (client.getLocalPlayer().getInteracting() != null)
 		{
@@ -555,29 +481,11 @@ public class RecolorCG extends Plugin
 		}
 	}
 
-	// This method is needed because the gate changes upon entering. That means it has to be recolored if a) the timer runs out and you get teleported or b) you pass through it
-	public void recolorGate()
+	public void recolorNPCs(Boolean useRecolor)
 	{
-		for(int i = 0; i < recordedGameObjects.size(); i++)
-		{
-			GameObject g = recordedGameObjects.get(i);
-			if(g.getId() == 37337)
-			{
-				Renderable renderable = g.getRenderable();
-				Model model = verifyModel(renderable);
-				if (model == null)
-				{
-					log.debug("recolorGate returned null!");
-					continue;
-				}
-				synchronized (dataProcessor)
-				{
-					dataProcessor.applyColors(g.getId(), "GameObject", model, true);
-				}
-				recordedModels.add(model);
-				sceneIDs.add(model.getSceneId());
-				model.setSceneId(0);
-			}
+		IndexedObjectSet<? extends NPC> npcs = client.getWorldView(-1).npcs();
+		for (NPC npc:npcs) {
+			recolorNPC(npc, useRecolor);
 		}
 	}
 
@@ -607,16 +515,42 @@ public class RecolorCG extends Plugin
 		}
 	}
 
-	// resets all changed SceneIDs of the models to prevent issues outside of the gauntlet
-	private void resetSceneIDs()
+	private Model verifyPreMapLoadModel(Renderable renderable)
 	{
-		int size = sceneIDs.size();
-		for (int i = 0; i < size; i++)
+		if (renderable instanceof Model)
 		{
-			recordedModels.get(i).setSceneId(sceneIDs.get(i));
+			return (Model) renderable;
 		}
-		recordedModels.clear();
-		sceneIDs.clear();
+		return null;
 	}
 
+
+	public void clearAll()
+	{
+		Scene scene = client.getTopLevelWorldView().getScene();
+		Tile[][][] sceneTiles = scene.getTiles();
+		recolorNPCs(false);
+		for (Tile[][] tiles : sceneTiles)
+		{
+			for (Tile[] tiles1 : tiles)
+			{
+				for (Tile tile : tiles1)
+				{
+					if (tile == null)
+						continue;
+					GameObject[] gameObjects = tile.getGameObjects();
+					for (GameObject object : gameObjects) {
+						if(object == null)
+						{
+							continue;
+						}
+						int ID = object.getId();
+						if (OBJECT_IDS.contains(ID)) {
+							recolorGameObject(object, false, false);
+						}
+					}
+				}
+			}
+		}
+	}
 }
