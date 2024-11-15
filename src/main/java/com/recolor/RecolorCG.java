@@ -190,7 +190,7 @@ public class RecolorCG extends Plugin
 	{
 		if (GROUND_IDS.contains(event.getGroundObject().getId()))
 		{
-			recolorGroundObject(event.getGroundObject(), false, true);
+			recolorGroundObject(event.getGroundObject(), false);
 		}
 	}
 
@@ -270,34 +270,31 @@ public class RecolorCG extends Plugin
 	@Subscribe
 	public void onPreMapLoad(PreMapLoad event)
 	{
-		Scene scene = event.getScene();
-		Tile[][][] sceneTiles = scene.getTiles();
-		for (Tile[][] tiles : sceneTiles)
-		{
-			for (Tile[] tiles1 : tiles)
-			{
-				for (Tile tile : tiles1)
-				{
-					if (tile == null)
-						continue;
-					GameObject[] gameObjects = tile.getGameObjects();
-					GroundObject groundObject = tile.getGroundObject();
-					for (GameObject object : gameObjects) {
-						if(object == null)
-						{
+		regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+		if(regionId == REGION_ID_GAUNTLET_CORRUPTED || regionId == REGION_ID_GAUNTLET_LOBBY) {
+			Scene scene = event.getScene();
+			Tile[][][] sceneTiles = scene.getTiles();
+			for (Tile[][] tiles : sceneTiles) {
+				for (Tile[] tiles1 : tiles) {
+					for (Tile tile : tiles1) {
+						if (tile == null)
 							continue;
+						GameObject[] gameObjects = tile.getGameObjects();
+						GroundObject groundObject = tile.getGroundObject();
+						for (GameObject object : gameObjects) {
+							if (object == null) {
+								continue;
+							}
+							int ID = object.getId();
+							if (OBJECT_IDS.contains(ID)) {
+								recolorGameObject(object, true, true);
+							}
 						}
-						int ID = object.getId();
-						if (OBJECT_IDS.contains(ID)) {
-							recolorGameObject(object, true, true);
-						}
-					}
-					if (groundObject != null)
-					{
-						int ID = groundObject.getId();
-						if (GROUND_IDS.contains(ID))
-						{
-							recolorGroundObject(groundObject, true, false);
+						if (groundObject != null) {
+							int ID = groundObject.getId();
+							if (GROUND_IDS.contains(ID)) {
+								recolorGroundObject(groundObject, true);
+							}
 						}
 					}
 				}
@@ -335,7 +332,7 @@ public class RecolorCG extends Plugin
 		}
 	}
 
-	public void recolorGroundObject(GroundObject groundObject, Boolean preMapLoad, Boolean fromRecolorAll)
+	public void recolorGroundObject(GroundObject groundObject, Boolean preMapLoad)
 	{
 		if(groundObject.getId() == 36047 || groundObject.getId() == 36048)
 		{	//Damaging ground recolor depends on config
