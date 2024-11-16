@@ -334,13 +334,6 @@ public class RecolorCG extends Plugin
 
 	public void recolorGroundObject(GroundObject groundObject, Boolean preMapLoad)
 	{
-		if(groundObject.getId() == 36047 || groundObject.getId() == 36048)
-		{	//Damaging ground recolor depends on config
-			if(!config.groundRecolor())
-			{
-				return;
-			}
-		}
 
 		Renderable renderable = groundObject.getRenderable();
 		Model model;
@@ -358,6 +351,19 @@ public class RecolorCG extends Plugin
 		{
 			log.debug("recolorGroundObject returned null!");
 			return;
+		}
+		if(groundObject.getId() == 36047 || groundObject.getId() == 36048)
+		{	//Damaging ground recolor depends on config
+			if(!config.groundRecolor())
+			{
+				dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, false);
+				return;
+			}
+			else
+			{
+				dataProcessor.applyColors(groundObject.getId(), "GroundObject", model, true);
+				return;
+			}
 		}
 
 		synchronized (dataProcessor)
@@ -463,17 +469,25 @@ public class RecolorCG extends Plugin
 
 	public void recolorProjectile(Projectile projectile)
 	{
+		Model model = projectile.getModel();
+		if (model == null)
+		{
+			log.debug("recolorProjectile returned null!");
+			return;
+		}
+
 		if(config.projectileRecolor())
 		{
-			Model model = projectile.getModel();
-			if (model == null)
-			{
-				log.debug("recolorProjectile returned null!");
-				return;
-			}
 			synchronized (dataProcessor)
 			{
 				dataProcessor.applyColors(projectile.getId(), "Projectile", model, true);
+			}
+		}
+		else
+		{
+			synchronized (dataProcessor)
+			{
+				dataProcessor.applyColors(projectile.getId(), "Projectile", model, false);
 			}
 		}
 	}
