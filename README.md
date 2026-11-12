@@ -44,7 +44,7 @@ Enable this option to change the color of the Hunllef's tornadoes.
 
 Enable this option for a more unified color scheme.
 
-## 117 HD support by [Marts]([Marts](https://github.com/Martsssssss))
+## 117 HD support by [Marts](https://github.com/Martsssssss)
 
 117 HD gives the corrupted NPCs and many of the objects in the Corrupted Gauntlet a bright red glow. These glows are built into 117 HD and ignore any recolour, so a blue Gauntlet would still glow red.
 
@@ -63,7 +63,7 @@ For the most variety, turn on **Random color each run**, **Use secondary color**
 
 ## Credits
 
-Credit for the 117 HD compatibility, the experimental features, and the write-up (including screenshots) of the new features goes to [Marts]([Marts](https://github.com/Martsssssss)).
+Credit for the 117 HD compatibility, the experimental features, and the write-up (including screenshots) of the new features goes to [Marts]((https://github.com/Martsssssss)).
 
 ## Issues and Support
 
