@@ -531,6 +531,8 @@ public class RecolorCG extends Plugin
 		}
 	}
 
+	// NOTE: 117 HD Support and experimental features are the work of Marts.
+	// Link to Marts GitHub: https://github.com/Martsssssss
 	//
 	// 117 HD support
 	//
