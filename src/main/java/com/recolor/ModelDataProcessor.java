@@ -3,7 +3,10 @@ package com.recolor;
 import net.runelite.api.Model;
 import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.List;
 
@@ -17,6 +20,12 @@ public class ModelDataProcessor
     private static final List<Integer> GREEN_OBJECTS = Arrays.asList(35966, 35969, 35970, 35975, 35976, 35978, 35979, 36003, 36004, 36005, 36006, 36007,36008);
     private static final int greenReference = 10758;
     private static final int redReference = 65452;
+
+    // Experimental: saturation/brightness shift applied to the normally hue-only surfaces.
+    // 0/0 means off, which matches the original plugin's behaviour.
+    private static final List<Integer> TONE_EXCLUDED_IDS = Arrays.asList(36047, 36048); // damaging floor, keep it readable
+    private int satShift = 0;
+    private int brightShift = 0;
 
     public ModelDataProcessor(String filePath, Color newColor, Color secondaryColor, Boolean harmonize) throws IOException
     {
@@ -32,7 +41,7 @@ public class ModelDataProcessor
         {
             if (inputStream == null)
             {
-                throw new FileNotFoundException("Resource not found: " + filePath);
+                throw new IOException("Resource not found: " + filePath);
             }
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)))
             {
@@ -68,6 +77,12 @@ public class ModelDataProcessor
         }
     }
 
+
+    public void setTone(int satShift, int brightShift)
+    {
+        this.satShift = satShift;
+        this.brightShift = brightShift;
+    }
 
     // creates a second hashmap with the recolored values, based of the vanilla hashmap
     public void recolorData(Color newColor, Color secondaryColor, Boolean harmonize)
@@ -148,9 +163,9 @@ public class ModelDataProcessor
             {
                 return hueShift(faceColor, newColor, redReference); // can't ever harmonize the damaging floor or it will be practically invisible
             }
-            return hueShift(faceColor, newColor, faceColor);    // if the referenceColor equals the faceColor, the Hue of the newColor will be applied
+            return applyTone(hueShift(faceColor, newColor, faceColor), id);    // if the referenceColor equals the faceColor, the Hue of the newColor will be applied
         }
-        return hueShift(faceColor, newColor, redReference);
+        return applyTone(hueShift(faceColor, newColor, redReference), id);
     }
 
     // Method is functional, but has a lot of variables. Will likely be adressed in a future iteration.
@@ -219,6 +234,26 @@ public class ModelDataProcessor
         newHue = (newHue % 64 + 64) % 64;
 
         return (newHue << 10) + (saturationFace << 7) + brightnessFace;
+    }
+
+    // Experimental: nudges saturation and brightness, clamped so surfaces never go fully grey, white or black
+    private int applyTone(int hsb, int id)
+    {
+        if ((satShift == 0 && brightShift == 0) || TONE_EXCLUDED_IDS.contains(id))
+        {
+            return hsb;
+        }
+        int hue = extractHsbValues(hsb, 6, 11);
+        int sat = extractHsbValues(hsb, 3, 8);
+        int bright = extractHsbValues(hsb, 7, 1);
+
+        if (sat > 0)    // leave pure greys grey
+        {
+            sat = Math.max(1, Math.min(7, sat + satShift));
+        }
+        bright = Math.max(4, Math.min(120, bright + brightShift));
+
+        return (hue << 10) + (sat << 7) + bright;
     }
 
     // Returns the hsb values
