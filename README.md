@@ -63,7 +63,7 @@ For the most variety, turn on **Random color each run**, **Use secondary color**
 
 ## Credits
 
-Credit for the 117 HD compatibility, the experimental features, and the write-up (including screenshots) of the new features goes to [Marts]((https://github.com/Martsssssss)).
+Credit for the 117 HD compatibility, the experimental features, and the write-up (including screenshots) of the new features goes to [Marts](https://github.com/Martsssssss).
 
 ## Issues and Support
 
